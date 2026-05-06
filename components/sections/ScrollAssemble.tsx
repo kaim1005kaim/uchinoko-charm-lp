@@ -116,8 +116,8 @@ function Captions({ progress }: { progress: MotionValue<number> }) {
           <StepRow key={s.eyebrow} progress={progress} variant="desktop" {...s} />
         ))}
       </div>
-      {/* モバイル: 下部に横並び */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-row flex-wrap items-center justify-center gap-x-5 gap-y-3 px-4 md:hidden">
+      {/* モバイル: モデル直下に横並び (PC 版同様にコピーと 3D を近付ける) */}
+      <div className="pointer-events-none absolute inset-x-0 top-[74%] flex flex-row flex-wrap items-start justify-center gap-x-5 gap-y-3 px-4 md:hidden">
         {STEPS.map((s) => (
           <StepRow key={s.eyebrow} progress={progress} variant="mobile" {...s} />
         ))}
