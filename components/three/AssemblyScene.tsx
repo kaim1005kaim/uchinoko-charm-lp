@@ -3,18 +3,28 @@
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import type { MotionValue } from 'framer-motion'
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 /**
  * パーツごとの「初期 (バラバラ) 位置」と「最終 (ドッキング) 位置」、回転、フェードを定義。
  * 進捗 0→1 で各パーツが終端へ向かい、0.85→1 では全体を Y 軸 360° 回転させる。
+ *
+ * ※ GLB の生メッシュは ±20 単位前後と巨大なので、各パーツ group に PART_SCALE を
+ * 掛けて画面 (z=7, fov=32°) に収まるよう縮小する。start/end は描画ワールド座標。
  */
+const PART_SCALE = 0.08
+
 type PartConfig = {
+  /** GLB の URL */
   url: string
+  /** 表示用キー (URL は重複可) */
+  key: string
   start: { x: number; y: number; z: number }
   end: { x: number; y: number; z: number }
   startRotation?: { x: number; y: number; z: number }
+  /** X 軸を反転して使う場合 (左耳を右耳として再利用) */
+  mirrorX?: boolean
   /** 進捗のうち、このパーツがアセンブルに使う窓 [from, to] (0-1) */
   window: [number, number]
 }
@@ -23,29 +33,34 @@ const PARTS: PartConfig[] = [
   // face_base は中心で先に出る
   {
     url: '/glb/shuna_face_base.glb',
-    start: { x: 0, y: 0, z: -1.5 },
+    key: 'face_base',
+    start: { x: 0, y: 0, z: -2 },
     end: { x: 0, y: 0, z: 0 },
     window: [0.0, 0.25],
   },
   // 左耳: 左から
   {
     url: '/glb/shuna_left_ear.glb',
-    start: { x: -3.5, y: 1.5, z: 0.5 },
+    key: 'left_ear',
+    start: { x: -3.5, y: 1.5, z: 0.6 },
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: -0.6 },
     window: [0.15, 0.55],
   },
-  // 右耳: 右から
+  // 右耳: 左耳を mirror して再利用 (shuna_right_ear.glb は nose の重複ファイル)
   {
-    url: '/glb/shuna_right_ear.glb',
-    start: { x: 3.5, y: 1.5, z: 0.5 },
+    url: '/glb/shuna_left_ear.glb',
+    key: 'right_ear',
+    start: { x: 3.5, y: 1.5, z: 0.6 },
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: 0.6 },
+    mirrorX: true,
     window: [0.2, 0.6],
   },
   // 鼻: 手前から
   {
     url: '/glb/shuna_nose.glb',
+    key: 'nose',
     start: { x: 0, y: -0.3, z: 4 },
     end: { x: 0, y: 0, z: 0 },
     window: [0.35, 0.7],
@@ -53,7 +68,8 @@ const PARTS: PartConfig[] = [
   // 口: 下から
   {
     url: '/glb/shuna_mouth.glb',
-    start: { x: 0, y: -3, z: 0.5 },
+    key: 'mouth',
+    start: { x: 0, y: -3, z: 0.6 },
     end: { x: 0, y: 0, z: 0 },
     window: [0.45, 0.8],
   },
@@ -61,58 +77,73 @@ const PARTS: PartConfig[] = [
 
 /**
  * 1 つの GLB パーツをスクロール進捗に応じて補間描画する。
+ * - シーンは clone() してインスタンス化 (同じ URL を複数並べても大丈夫に)。
+ * - マテリアルも複製し、フェード時の opacity 上書きが他インスタンスに伝わらないようにする。
  */
 function ScrollPart({
   config,
   progress,
-  groupRef,
 }: {
   config: PartConfig
   progress: MotionValue<number>
-  groupRef?: React.RefObject<THREE.Group | null>
 }) {
   const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(config.url) as unknown as { scene: THREE.Group }
+
+  const cloned = useMemo(() => {
+    const c = scene.clone(true)
+    c.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const cloneMat = (m: THREE.Material) => {
+        const nm = m.clone()
+        nm.transparent = true
+        return nm
+      }
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(cloneMat)
+        : cloneMat(mesh.material)
+    })
+    return c
+  }, [scene])
 
   useFrame(() => {
     if (!ref.current) return
     const p = progress.get()
     const [w0, w1] = config.window
-    // パーツごとの窓内で 0→1 を smoothstep
     const t = THREE.MathUtils.smoothstep(p, w0, w1)
-    // 位置補間
+
     ref.current.position.set(
       THREE.MathUtils.lerp(config.start.x, config.end.x, t),
       THREE.MathUtils.lerp(config.start.y, config.end.y, t),
       THREE.MathUtils.lerp(config.start.z, config.end.z, t),
     )
-    // 回転補間 (start から終端 0,0,0 へ)
+
     const sr = config.startRotation ?? { x: 0, y: 0, z: 0 }
     ref.current.rotation.set(
       THREE.MathUtils.lerp(sr.x, 0, t),
       THREE.MathUtils.lerp(sr.y, 0, t),
       THREE.MathUtils.lerp(sr.z, 0, t),
     )
-    // フェード (window 開始前は 0、開始後すぐに 1)
-    const fadeIn = Math.min(1, Math.max(0, (p - w0) / 0.05))
-    ref.current.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) {
-        const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[]
-        const apply = (m: THREE.Material) => {
-          m.transparent = true
-          ;(m as THREE.MeshStandardMaterial).opacity = fadeIn
-        }
-        if (Array.isArray(mat)) mat.forEach(apply)
-        else apply(mat)
+
+    // フェード (window 開始時点で 1)
+    const opacity = p < w0 ? 0 : 1
+    cloned.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const apply = (m: THREE.Material) => {
+        ;(m as THREE.MeshStandardMaterial).opacity = opacity
       }
+      if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
+      else apply(mesh.material)
     })
-    // 最後の回転は親 group が持つので、ここでは何もしない
-    void groupRef
   })
 
+  const sx = (config.mirrorX ? -1 : 1) * PART_SCALE
+
   return (
-    <group ref={ref}>
-      <primitive object={scene} />
+    <group ref={ref} scale={[sx, PART_SCALE, PART_SCALE]}>
+      <primitive object={cloned} />
     </group>
   )
 }
@@ -138,11 +169,12 @@ export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   return (
     <group ref={groupRef}>
       {PARTS.map((p) => (
-        <ScrollPart key={p.url} config={p} progress={progress} groupRef={groupRef} />
+        <ScrollPart key={p.key} config={p} progress={progress} />
       ))}
     </group>
   )
 }
 
 // preload で初回ロード遅延を減らす
-PARTS.forEach((p) => useGLTF.preload(p.url))
+const PRELOAD_URLS = Array.from(new Set(PARTS.map((p) => p.url)))
+PRELOAD_URLS.forEach((u) => useGLTF.preload(u))
