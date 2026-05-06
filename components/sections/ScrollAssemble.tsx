@@ -55,8 +55,8 @@ const STEPS = [
     title: 'Nose',
     sub: '愛嬌のある鼻が手前から',
     range: [0.22, 0.33],
-    // 顔の中央 (鼻) まで線を引きたいので右端寄せ + 長い線
-    style: { top: '66%', right: '8%' },
+    // 顔の中央 (鼻) を指す
+    style: { top: '63%', right: '8%' },
     lineWidth: 380,
   },
   {
@@ -64,8 +64,9 @@ const STEPS = [
     title: 'Mouth',
     sub: 'やさしい口元が下から',
     range: [0.32, 0.42],
-    style: { top: '80%', right: '8%' },
-    lineWidth: 100,
+    // 口元を指す
+    style: { top: '78%', right: '8%' },
+    lineWidth: 380,
   },
 ] as const
 
@@ -188,10 +189,11 @@ function StepRow({
   } else if (p < r1 + fadeOut) {
     const t = (p - r1) / fadeOut
     opacity = 1 - (1 - 0.5) * t
-    lineScale = 1 - (1 - 0.55) * t
+    // 通り過ぎても線は伸ばしたまま (各パーツへの指示線として残す)
+    lineScale = 1
   } else {
     opacity = 0.5
-    lineScale = 0.55
+    lineScale = 1
   }
 
   if (variant === 'mobile') {

@@ -1,8 +1,8 @@
 import Image from 'next/image'
 
 /**
- * 8 種 (オリジナル 4 種 + 色違い 4 種) を犬/猫・元色/色違いが交互になるよう
- * シャッフル配置。残りの placeholder はデスクトップ (5x2 = 10 マス) のみ表示。
+ * モバイル: 8 種 (オリジナル 4 種 + 色違い 4 種) で 4×2 グリッドを完全に埋める
+ * デスクトップ: さらに v3 を 2 種追加して 5×2 = 10 マスを埋める
  */
 const ICONS = [
   '/images/LINEUP_dog_A_icon.svg',
@@ -13,6 +13,12 @@ const ICONS = [
   '/images/LINEUP_dog_A_icon_v2.svg',
   '/images/LINEUP_cat_A_P2_icon_v2.svg',
   '/images/LINEUP_dog_B_icon.svg',
+] as const
+
+/** デスクトップでのみ追加表示する 2 種 (v3 = 別カラー) */
+const ICONS_DESKTOP_EXTRA = [
+  '/images/LINEUP_dog_A_icon_v3.svg',
+  '/images/LINEUP_cat_A_P1_icon_v3.svg',
 ] as const
 
 /**
@@ -46,14 +52,14 @@ export function Lineup() {
               <Image src={src} alt="" aria-hidden width={120} height={120} />
             </div>
           ))}
-          {/* デスクトップで 5x2 を埋める用の placeholder (モバイルでは非表示) */}
-          {Array.from({ length: 2 }).map((_, i) => (
+          {/* デスクトップ追加 2 種 (モバイルでは非表示) */}
+          {ICONS_DESKTOP_EXTRA.map((src) => (
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder grid
-              key={`placeholder-${i}`}
-              aria-hidden
-              className="hidden aspect-square rounded-3xl bg-white md:block"
-            />
+              key={src}
+              className="hidden aspect-square items-center justify-center rounded-3xl bg-white p-5 shadow-sm md:flex"
+            >
+              <Image src={src} alt="" aria-hidden width={120} height={120} />
+            </div>
           ))}
         </div>
 
