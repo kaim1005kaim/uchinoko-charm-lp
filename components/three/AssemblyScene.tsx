@@ -156,8 +156,15 @@ function ScrollPart({
 
 /**
  * 全体を束ねて、最終局面 (ASSEMBLY_END→1) で Y 軸 360° 回転させる。
+ * yOffset: モバイルでモデルを上方向に少し寄せる用 (キャプションが下に来るので空間を有効活用)。
  */
-export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
+export function AssemblyScene({
+  progress,
+  yOffset = 0,
+}: {
+  progress: MotionValue<number>
+  yOffset?: number
+}) {
   const groupRef = useRef<THREE.Group>(null!)
 
   useFrame(() => {
@@ -177,7 +184,7 @@ export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   })
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} position={[0, yOffset, 0]}>
       {PARTS.map((p) => (
         <ScrollPart key={p.key} config={p} progress={progress} />
       ))}

@@ -72,11 +72,16 @@ export function ScrollAssemble() {
     offset: ['start start', 'end end'],
   })
 
-  // モバイルではカメラを引いて model 全体 (耳まで) が画面に余裕で収まるようにする
+  // モバイルではカメラを引いて model 全体 (耳まで) が画面に余裕で収まるようにする。
+  // yOffset でモバイルはモデルを上に寄せて、下半分にキャプションを置く。
   const [cameraZ, setCameraZ] = useState(7)
+  const [yOffset, setYOffset] = useState(0)
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 767px)')
-    const apply = () => setCameraZ(mql.matches ? 14 : 7)
+    const apply = () => {
+      setCameraZ(mql.matches ? 14 : 7)
+      setYOffset(mql.matches ? 1.8 : 0)
+    }
     apply()
     mql.addEventListener('change', apply)
     return () => mql.removeEventListener('change', apply)
@@ -97,7 +102,7 @@ export function ScrollAssemble() {
           <directionalLight position={[-4, -2, -3]} intensity={0.35} />
           <Suspense fallback={null}>
             <Environment preset="studio" />
-            <AssemblyScene progress={scrollYProgress} />
+            <AssemblyScene progress={scrollYProgress} yOffset={yOffset} />
           </Suspense>
         </Canvas>
 
@@ -116,8 +121,8 @@ function Captions({ progress }: { progress: MotionValue<number> }) {
           <StepRow key={s.eyebrow} progress={progress} variant="desktop" {...s} />
         ))}
       </div>
-      {/* モバイル: モデル直下に横並び (PC 版同様にコピーと 3D を近付ける) */}
-      <div className="pointer-events-none absolute inset-x-0 top-[74%] flex flex-row flex-wrap items-start justify-center gap-x-5 gap-y-3 px-4 md:hidden">
+      {/* モバイル: モデル直下に横並び (yOffset でモデルが上寄せなのに合わせて) */}
+      <div className="pointer-events-none absolute inset-x-0 top-[52%] flex flex-row flex-wrap items-start justify-center gap-x-5 gap-y-3 px-4 md:hidden">
         {STEPS.map((s) => (
           <StepRow key={s.eyebrow} progress={progress} variant="mobile" {...s} />
         ))}

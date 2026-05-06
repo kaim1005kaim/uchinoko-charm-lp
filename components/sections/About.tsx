@@ -7,9 +7,9 @@ import Image from 'next/image'
  */
 export function About() {
   return (
-    <section className="relative overflow-hidden bg-white py-24 md:py-36">
+    <section className="relative overflow-hidden bg-white pt-16 pb-6 md:py-36">
       <div className="relative mx-auto max-w-2xl px-6 text-center text-brand-blue">
-        <p className="mb-12 text-[10px] tracking-[0.4em] text-brand-blue/70">about</p>
+        <p className="mb-10 text-[10px] tracking-[0.4em] text-brand-blue/70 md:mb-12">about</p>
 
         {/* 装飾アイコン (左上の猫チャーム) — モバイルでは非表示 */}
         <Image
