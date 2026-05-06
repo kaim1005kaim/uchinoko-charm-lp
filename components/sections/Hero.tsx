@@ -41,14 +41,15 @@ export function Hero() {
           />
         </div>
 
-        {/* タイトル */}
-        <h1 className="select-none text-center font-bold leading-[0.95] tracking-tight">
-          <span className="block text-[3.5rem]">うちのこ</span>
-          <span className="mt-2 block text-[3.5rem]">チャーム</span>
-          <span className="mt-3 block text-[10px] font-medium tracking-[0.4em] opacity-90">
-            uchinoko charm
-          </span>
-        </h1>
+        {/* タイトル (ロゴ画像) */}
+        <Image
+          src="/images/LP_EC_LOGO.png"
+          alt="うちのこチャーム"
+          width={420}
+          height={280}
+          className="h-auto w-[240px] drop-shadow-lg"
+          priority
+        />
 
         {/* 下の猫 2 種 */}
         <div className="flex w-full items-end justify-between">

@@ -20,16 +20,16 @@ export function CTA() {
         {/* CTA を読みやすくする暗めのオーバーレイ */}
         <div className="absolute inset-0 bg-black/25" />
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 px-6 text-center">
+        <div className="absolute inset-0 flex flex-col items-center px-6 pt-10 text-center md:pt-16">
           <Image
             src="/images/LP_EC_LOGO.png"
             alt="うちのこチャーム"
             width={260}
             height={170}
-            className="drop-shadow-lg"
+            className="h-auto w-[180px] drop-shadow-lg md:w-[260px]"
           />
 
-          <div className="flex flex-col items-center gap-3">
+          <div className="mt-5 flex flex-col items-center gap-2 md:mt-7 md:gap-3">
             <button
               type="button"
               disabled

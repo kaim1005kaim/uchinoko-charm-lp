@@ -72,11 +72,11 @@ export function ScrollAssemble() {
     offset: ['start start', 'end end'],
   })
 
-  // モバイルではカメラを引いて model 全体が画面に収まるようにする
+  // モバイルではカメラを引いて model 全体 (耳まで) が画面に余裕で収まるようにする
   const [cameraZ, setCameraZ] = useState(7)
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 767px)')
-    const apply = () => setCameraZ(mql.matches ? 11 : 7)
+    const apply = () => setCameraZ(mql.matches ? 14 : 7)
     apply()
     mql.addEventListener('change', apply)
     return () => mql.removeEventListener('change', apply)
