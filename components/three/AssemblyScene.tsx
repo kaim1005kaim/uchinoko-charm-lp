@@ -9,17 +9,23 @@ import * as THREE from 'three'
 /**
  * パーツごとの「初期 (バラバラ) 位置」と「最終 (ドッキング) 位置」、回転、フェードを定義。
  *
- * 進捗 0→0.58 で各パーツが終端へ集合し、0.58→0.78 で 1 回転。
- * 0.78→1.0 は静止保持 (完成形を見せる余白) — useFrame で何もしない。
+ * 進捗フェーズ:
+ *   0 → 0.42  : パーツがバラバラ → 終端へ集合
+ *   0.42 → 0.55 : 集合済みパーツがフェードアウト、テクスチャ付きの完成モデル
+ *                 (shuna_ALL_tx.glb / 眉と目あり) がフェードイン
+ *   0.55 → 0.78 : 完成モデルが Y 軸 360° 回転
+ *   0.78 → 1.0  : 静止保持 (完成形を見せる余白)
  *
  * GLB の生メッシュは ±20 単位前後と巨大なので、各パーツ group に PART_SCALE を
- * 掛けてカメラ (z=7, fov=32°) に収まるよう縮小する。start/end は描画ワールド座標。
+ * 掛けてカメラに収まるよう縮小する。
  */
 const PART_SCALE = 0.08
 
-/** 全体を組み上げ終わるスクロール進捗 (この値以降は回転フェーズ) */
-const ASSEMBLY_END = 0.58
-/** 1 回転を終えるスクロール進捗 (この値以降は静止保持) */
+/** パーツのアセンブルが完了する進捗 (この後にテクスチャフェードへ) */
+const ASSEMBLY_END = 0.42
+/** テクスチャ (眉・目) が完全に表示される進捗 */
+const TEXTURE_END = 0.55
+/** 1 回転を終える進捗 (この値以降は静止保持) */
 const SPIN_END = 0.78
 
 type PartConfig = {
@@ -42,7 +48,7 @@ const PARTS: PartConfig[] = [
     key: 'face_base',
     start: { x: 0, y: 0, z: -3 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.0, 0.13],
+    window: [0.0, 0.1],
   },
   // STEP 02 左耳
   {
@@ -51,9 +57,9 @@ const PARTS: PartConfig[] = [
     start: { x: -4.5, y: 2.2, z: 1 },
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: -0.7 },
-    window: [0.13, 0.27],
+    window: [0.1, 0.22],
   },
-  // STEP 02 右耳 (左耳を mirrorX で再利用 — shuna_right_ear.glb は nose の重複ファイル)
+  // STEP 02 右耳 (左耳を mirrorX で再利用)
   {
     url: '/glb/shuna_left_ear.glb',
     key: 'right_ear',
@@ -61,7 +67,7 @@ const PARTS: PartConfig[] = [
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: 0.7 },
     mirrorX: true,
-    window: [0.17, 0.3],
+    window: [0.13, 0.25],
   },
   // STEP 03 鼻
   {
@@ -69,7 +75,7 @@ const PARTS: PartConfig[] = [
     key: 'nose',
     start: { x: 0, y: 0, z: 5 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.3, 0.45],
+    window: [0.22, 0.33],
   },
   // STEP 04 口
   {
@@ -77,14 +83,18 @@ const PARTS: PartConfig[] = [
     key: 'mouth',
     start: { x: 0, y: -3.5, z: 1 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.45, 0.58],
+    window: [0.32, 0.42],
   },
 ]
 
 /**
+ * テクスチャ付きの完成モデル (眉と目あり)。
+ * ASSEMBLY_END → TEXTURE_END でフェードインし、以降は完全表示のまま回転 / 静止する。
+ */
+const TEXTURED_URL = '/glb/shuna_ALL_tx.glb'
+
+/**
  * 1 つの GLB パーツをスクロール進捗に応じて補間描画する。
- * - シーンは clone() してインスタンス化 (同じ URL を mirror 用に再利用しても OK)。
- * - マテリアルも複製し、フェード時の opacity 上書きが他インスタンスに伝わらないようにする。
  */
 function ScrollPart({
   config,
@@ -132,13 +142,16 @@ function ScrollPart({
       THREE.MathUtils.lerp(sr.z, 0, t),
     )
 
-    // フェード: window 開始の少し前から 0→1 で出現
+    // window 開始時にフェードイン、ASSEMBLY_END → TEXTURE_END でフェードアウト
     const fadeIn = THREE.MathUtils.smoothstep(p, w0 - 0.02, w0 + 0.04)
+    const fadeOut = 1 - THREE.MathUtils.smoothstep(p, ASSEMBLY_END, TEXTURE_END)
+    const opacity = fadeIn * fadeOut
+
     cloned.traverse((o) => {
       const mesh = o as THREE.Mesh
       if (!mesh.isMesh) return
       const apply = (m: THREE.Material) => {
-        ;(m as THREE.MeshStandardMaterial).opacity = fadeIn
+        ;(m as THREE.MeshStandardMaterial).opacity = opacity
       }
       if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
       else apply(mesh.material)
@@ -155,8 +168,53 @@ function ScrollPart({
 }
 
 /**
- * 全体を束ねて、最終局面 (ASSEMBLY_END→1) で Y 軸 360° 回転させる。
- * yOffset: モバイルでモデルを上方向に少し寄せる用 (キャプションが下に来るので空間を有効活用)。
+ * テクスチャ付き完成モデル。ASSEMBLY_END → TEXTURE_END でフェードイン。
+ * 表面に眉と目のテクスチャが乗る。
+ */
+function TexturedFinish({ progress }: { progress: MotionValue<number> }) {
+  const { scene } = useGLTF(TEXTURED_URL) as unknown as { scene: THREE.Group }
+
+  const cloned = useMemo(() => {
+    const c = scene.clone(true)
+    c.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const cloneMat = (m: THREE.Material) => {
+        const nm = m.clone()
+        nm.transparent = true
+        return nm
+      }
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(cloneMat)
+        : cloneMat(mesh.material)
+    })
+    return c
+  }, [scene])
+
+  useFrame(() => {
+    const p = progress.get()
+    const fadeIn = THREE.MathUtils.smoothstep(p, ASSEMBLY_END, TEXTURE_END)
+    cloned.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const apply = (m: THREE.Material) => {
+        ;(m as THREE.MeshStandardMaterial).opacity = fadeIn
+      }
+      if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
+      else apply(mesh.material)
+    })
+  })
+
+  return (
+    <group scale={PART_SCALE}>
+      <primitive object={cloned} />
+    </group>
+  )
+}
+
+/**
+ * 全体を束ねて、テクスチャ表示完了後 (TEXTURE_END→SPIN_END) で Y 軸 360° 回転させる。
+ * yOffset: モバイルでモデルを上方向に少し寄せる用。
  */
 export function AssemblyScene({
   progress,
@@ -170,15 +228,15 @@ export function AssemblyScene({
   useFrame(() => {
     if (!groupRef.current) return
     const p = progress.get()
-    if (p < ASSEMBLY_END) {
-      // アセンブル中: ゆるく左右に揺らす
+    if (p < TEXTURE_END) {
+      // アセンブル / テクスチャフェード中: ゆるく左右に揺らす
       groupRef.current.rotation.y = Math.sin(performance.now() / 1500) * 0.06
     } else if (p < SPIN_END) {
       // 1 回転フェーズ
-      const spinT = (p - ASSEMBLY_END) / (SPIN_END - ASSEMBLY_END)
+      const spinT = (p - TEXTURE_END) / (SPIN_END - TEXTURE_END)
       groupRef.current.rotation.y = spinT * Math.PI * 2
     } else {
-      // 静止保持: 完成形を見せる余白 (回転は最終位置 = 0 に固定)
+      // 静止保持: 完成形を見せる余白
       groupRef.current.rotation.y = 0
     }
   })
@@ -188,10 +246,11 @@ export function AssemblyScene({
       {PARTS.map((p) => (
         <ScrollPart key={p.key} config={p} progress={progress} />
       ))}
+      <TexturedFinish progress={progress} />
     </group>
   )
 }
 
 // preload で初回ロード遅延を減らす (URL を重複排除)
-const PRELOAD_URLS = Array.from(new Set(PARTS.map((p) => p.url)))
+const PRELOAD_URLS = Array.from(new Set([...PARTS.map((p) => p.url), TEXTURED_URL]))
 PRELOAD_URLS.forEach((u) => useGLTF.preload(u))

@@ -1,15 +1,23 @@
 import Image from 'next/image'
 
+/**
+ * 8 種 (オリジナル 4 種 + 色違い 4 種) を犬/猫・元色/色違いが交互になるよう
+ * シャッフル配置。残りの placeholder はデスクトップ (5x2 = 10 マス) のみ表示。
+ */
 const ICONS = [
   '/images/LINEUP_dog_A_icon.svg',
-  '/images/LINEUP_dog_B_icon.svg',
-  '/images/LINEUP_cat_A_P1_icon.svg',
+  '/images/LINEUP_cat_A_P1_icon_v2.svg',
+  '/images/LINEUP_dog_B_icon_v2.svg',
   '/images/LINEUP_cat_A_P2_icon.svg',
+  '/images/LINEUP_cat_A_P1_icon.svg',
+  '/images/LINEUP_dog_A_icon_v2.svg',
+  '/images/LINEUP_cat_A_P2_icon_v2.svg',
+  '/images/LINEUP_dog_B_icon.svg',
 ] as const
 
 /**
  * Line up: 黄背景 + ブランドブルーの見出し。
- * - デスクトップ: 5 列 × 2 行 = 10 マス (デザイン PDF 準拠)
+ * - デスクトップ: 5 列 × 2 行 = 10 マス (8 アイコン + 2 placeholder)
  * - モバイル: 4 列 × 2 行 = 8 マス (タップしやすいサイズ確保)
  */
 export function Lineup() {
@@ -20,10 +28,10 @@ export function Lineup() {
           Line up
         </p>
         <h2 className="mb-2 text-center font-bold text-base leading-snug md:text-2xl">
-          うちのこは全部でイヌネコあわせて 40 種類
+          「うちのこ」の組み合わせは無限大
         </h2>
-        <p className="mb-10 text-center font-bold text-2xl md:mb-12 md:text-3xl">
-          選び方は無限大！
+        <p className="mb-10 text-center font-bold text-xl leading-snug md:mb-12 md:text-3xl">
+          世界でひとつの「うちのこ」がつくれる！
         </p>
 
         {/* モバイル: 4 列 × 2 行 (8 マス)、デスクトップ: 5 列 × 2 行 (10 マス) */}
@@ -36,15 +44,13 @@ export function Lineup() {
               <Image src={src} alt="" aria-hidden width={120} height={120} />
             </div>
           ))}
-          {/* モバイルは 4 マス placeholder、デスクトップは 6 マス必要 */}
-          {Array.from({ length: 6 }).map((_, i) => (
+          {/* デスクトップで 5x2 を埋める用の placeholder (モバイルでは非表示) */}
+          {Array.from({ length: 2 }).map((_, i) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder grid
               key={`placeholder-${i}`}
               aria-hidden
-              className={`aspect-square rounded-2xl bg-white md:rounded-3xl ${
-                i >= 4 ? 'hidden md:block' : ''
-              }`}
+              className="hidden aspect-square rounded-3xl bg-white md:block"
             />
           ))}
         </div>
