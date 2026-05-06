@@ -8,76 +8,79 @@ import * as THREE from 'three'
 
 /**
  * パーツごとの「初期 (バラバラ) 位置」と「最終 (ドッキング) 位置」、回転、フェードを定義。
- * 進捗 0→1 で各パーツが終端へ向かい、0.85→1 では全体を Y 軸 360° 回転させる。
  *
- * ※ GLB の生メッシュは ±20 単位前後と巨大なので、各パーツ group に PART_SCALE を
- * 掛けて画面 (z=7, fov=32°) に収まるよう縮小する。start/end は描画ワールド座標。
+ * 進捗 0→0.72 で各パーツが終端へ向かい、0.72→1 では全体を Y 軸 360° 回転させる。
+ *
+ * GLB の生メッシュは ±20 単位前後と巨大なので、各パーツ group に PART_SCALE を
+ * 掛けてカメラ (z=7, fov=32°) に収まるよう縮小する。start/end は描画ワールド座標。
  */
 const PART_SCALE = 0.08
 
+/** 全体を組み上げ終わるスクロール進捗 (この値以降は回転フェーズ) */
+const ASSEMBLY_END = 0.72
+
 type PartConfig = {
-  /** GLB の URL */
   url: string
   /** 表示用キー (URL は重複可) */
   key: string
   start: { x: number; y: number; z: number }
   end: { x: number; y: number; z: number }
   startRotation?: { x: number; y: number; z: number }
-  /** X 軸を反転して使う場合 (左耳を右耳として再利用) */
+  /** 左耳を mirror して右耳に流用する用 */
   mirrorX?: boolean
   /** 進捗のうち、このパーツがアセンブルに使う窓 [from, to] (0-1) */
   window: [number, number]
 }
 
 const PARTS: PartConfig[] = [
-  // face_base は中心で先に出る
+  // STEP 01 顔のベース
   {
     url: '/glb/shuna_face_base.glb',
     key: 'face_base',
-    start: { x: 0, y: 0, z: -2 },
+    start: { x: 0, y: 0, z: -3 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.0, 0.25],
+    window: [0.0, 0.16],
   },
-  // 左耳: 左から
+  // STEP 02 左耳
   {
     url: '/glb/shuna_left_ear.glb',
     key: 'left_ear',
-    start: { x: -3.5, y: 1.5, z: 0.6 },
+    start: { x: -4.5, y: 2.2, z: 1 },
     end: { x: 0, y: 0, z: 0 },
-    startRotation: { x: 0, y: 0, z: -0.6 },
-    window: [0.15, 0.55],
+    startRotation: { x: 0, y: 0, z: -0.7 },
+    window: [0.16, 0.32],
   },
-  // 右耳: 左耳を mirror して再利用 (shuna_right_ear.glb は nose の重複ファイル)
+  // STEP 02 右耳 (左耳を mirrorX で再利用 — shuna_right_ear.glb は nose の重複ファイル)
   {
     url: '/glb/shuna_left_ear.glb',
     key: 'right_ear',
-    start: { x: 3.5, y: 1.5, z: 0.6 },
+    start: { x: 4.5, y: 2.2, z: 1 },
     end: { x: 0, y: 0, z: 0 },
-    startRotation: { x: 0, y: 0, z: 0.6 },
+    startRotation: { x: 0, y: 0, z: 0.7 },
     mirrorX: true,
-    window: [0.2, 0.6],
+    window: [0.2, 0.36],
   },
-  // 鼻: 手前から
+  // STEP 03 鼻
   {
     url: '/glb/shuna_nose.glb',
     key: 'nose',
-    start: { x: 0, y: -0.3, z: 4 },
+    start: { x: 0, y: 0, z: 5 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.35, 0.7],
+    window: [0.36, 0.55],
   },
-  // 口: 下から
+  // STEP 04 口
   {
     url: '/glb/shuna_mouth.glb',
     key: 'mouth',
-    start: { x: 0, y: -3, z: 0.6 },
+    start: { x: 0, y: -3.5, z: 1 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.45, 0.8],
+    window: [0.55, 0.72],
   },
 ]
 
 /**
  * 1 つの GLB パーツをスクロール進捗に応じて補間描画する。
- * - シーンは clone() してインスタンス化 (同じ URL を複数並べても大丈夫に)。
+ * - シーンは clone() してインスタンス化 (同じ URL を mirror 用に再利用しても OK)。
  * - マテリアルも複製し、フェード時の opacity 上書きが他インスタンスに伝わらないようにする。
  */
 function ScrollPart({
@@ -126,13 +129,13 @@ function ScrollPart({
       THREE.MathUtils.lerp(sr.z, 0, t),
     )
 
-    // フェード (window 開始時点で 1)
-    const opacity = p < w0 ? 0 : 1
+    // フェード: window 開始の少し前から 0→1 で出現
+    const fadeIn = THREE.MathUtils.smoothstep(p, w0 - 0.02, w0 + 0.04)
     cloned.traverse((o) => {
       const mesh = o as THREE.Mesh
       if (!mesh.isMesh) return
       const apply = (m: THREE.Material) => {
-        ;(m as THREE.MeshStandardMaterial).opacity = opacity
+        ;(m as THREE.MeshStandardMaterial).opacity = fadeIn
       }
       if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
       else apply(mesh.material)
@@ -149,7 +152,7 @@ function ScrollPart({
 }
 
 /**
- * 全体を束ねて、最終局面 (0.85→1) で Y 軸 360° 回転させる。
+ * 全体を束ねて、最終局面 (ASSEMBLY_END→1) で Y 軸 360° 回転させる。
  */
 export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   const groupRef = useRef<THREE.Group>(null!)
@@ -157,12 +160,12 @@ export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   useFrame(() => {
     if (!groupRef.current) return
     const p = progress.get()
-    if (p > 0.85) {
-      const spinT = (p - 0.85) / 0.15
+    if (p > ASSEMBLY_END) {
+      const spinT = Math.min(1, (p - ASSEMBLY_END) / (1 - ASSEMBLY_END))
       groupRef.current.rotation.y = spinT * Math.PI * 2
     } else {
       // アイドル状態でゆるく揺らす
-      groupRef.current.rotation.y = Math.sin(performance.now() / 1500) * 0.08
+      groupRef.current.rotation.y = Math.sin(performance.now() / 1500) * 0.06
     }
   })
 
@@ -175,6 +178,6 @@ export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   )
 }
 
-// preload で初回ロード遅延を減らす
+// preload で初回ロード遅延を減らす (URL を重複排除)
 const PRELOAD_URLS = Array.from(new Set(PARTS.map((p) => p.url)))
 PRELOAD_URLS.forEach((u) => useGLTF.preload(u))

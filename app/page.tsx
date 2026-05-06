@@ -9,7 +9,7 @@ import { ScrollAssemble } from '@/components/sections/ScrollAssemble'
 
 export default function Home() {
   return (
-    <main className="overflow-x-hidden">
+    <main className="relative overflow-x-clip">
       <Hero />
       <About />
       <ScrollAssemble />
