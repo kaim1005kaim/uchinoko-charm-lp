@@ -19,9 +19,12 @@ const ASSEMBLY_END = 0.42
 const TEXTURE_END = 0.55
 const SPIN_END = 0.78
 
-/** 完成 GLB の Material 0 (ボディ) baseColorFactor 0.114 にほぼ一致する灰色 */
-const BODY_COLOR = 0x1d1d1d
-/** 完成 GLB の Material 1 (耳/鼻/口など) baseColorFactor 0.8 にほぼ一致する灰色 */
+/**
+ * ボディの灰色。元 GLB は 0.114 だが、ライティング下で暗くなりすぎるため
+ * decal 表示前後で同じ印象になる中間値に持ち上げる
+ */
+const BODY_COLOR = 0x808080
+/** 耳・鼻・口など (元 0.8) */
 const PARTS_COLOR = 0xcccccc
 
 const CLEAN_GLB_URL = '/glb/shuna_ALL.glb'
@@ -37,6 +40,8 @@ type PartConfig = {
   window: [number, number]
   /** 集合中のパーツに乗せる色 (完成 GLB と一致させる) */
   tint: number
+  /** ボディは常に不透明にしたいのでフェードを skip する */
+  skipFadeIn?: boolean
 }
 
 const PARTS: PartConfig[] = [
@@ -47,6 +52,8 @@ const PARTS: PartConfig[] = [
     end: { x: 0, y: 0, z: 0 },
     window: [0.0, 0.1],
     tint: BODY_COLOR,
+    // ボディは透過させずスクロール開始前から完全不透明で見せる
+    skipFadeIn: true,
   },
   {
     url: '/glb/shuna_left_ear.glb',
@@ -78,7 +85,8 @@ const PARTS: PartConfig[] = [
   {
     url: '/glb/shuna_mouth.glb',
     key: 'mouth',
-    start: { x: 0, y: -3.5, z: 1 },
+    // 鼻と同じく z 軸 (カメラ側) から飛び込んでくる
+    start: { x: 0, y: 0, z: 5 },
     end: { x: 0, y: 0, z: 0 },
     window: [0.32, 0.42],
     tint: PARTS_COLOR,
@@ -105,7 +113,14 @@ function applyMaterialState(mesh: THREE.Mesh, opacity: number) {
 
 function cloneSceneWithMaterials(
   scene: THREE.Group,
-  options?: { forceDoubleSide?: boolean; tint?: number },
+  options?: {
+    forceDoubleSide?: boolean
+    /** 全マテリアルを単一色で塗りつぶし (assembled parts 用) */
+    tint?: number
+    /** 元 baseColor が暗い (ボディ) と明るい (パーツ) で別の色を当てる (完成 GLB 用) */
+    bodyTint?: number
+    partsTint?: number
+  },
 ): THREE.Group {
   const c = scene.clone(true)
   c.traverse((o) => {
@@ -114,8 +129,20 @@ function cloneSceneWithMaterials(
     const cloneMat = (m: THREE.Material) => {
       const nm = m.clone()
       if (options?.forceDoubleSide) nm.side = THREE.DoubleSide
+      const stdMat = nm as THREE.MeshStandardMaterial
       if (options?.tint !== undefined) {
-        ;(nm as THREE.MeshStandardMaterial).color = new THREE.Color(options.tint)
+        stdMat.color = new THREE.Color(options.tint)
+      } else if (
+        options?.bodyTint !== undefined &&
+        options?.partsTint !== undefined &&
+        stdMat.color
+      ) {
+        // 元 baseColor の明度で振り分け (clean GLB は body=0.114 / parts=0.8)
+        const lum =
+          (stdMat.color.r + stdMat.color.g + stdMat.color.b) / 3
+        stdMat.color = new THREE.Color(
+          lum < 0.5 ? options.bodyTint : options.partsTint,
+        )
       }
       return nm
     }
@@ -167,7 +194,10 @@ function ScrollPart({
       THREE.MathUtils.lerp(sr.z, 0, t),
     )
 
-    const fadeIn = THREE.MathUtils.smoothstep(p, w0 - 0.02, w0 + 0.04)
+    // skipFadeIn: ボディは常に不透明 / それ以外は窓の前から徐々に出現
+    const fadeIn = config.skipFadeIn
+      ? 1
+      : THREE.MathUtils.smoothstep(p, w0 - 0.06, w0)
     // ASSEMBLY_END で瞬時に消す (完成 GLB と入れ替え)
     const visible = p < ASSEMBLY_END && fadeIn > 0.005
     if (ref.current.visible !== visible) ref.current.visible = visible
@@ -195,7 +225,13 @@ function CleanFinish({ progress }: { progress: MotionValue<number> }) {
   const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(CLEAN_GLB_URL) as unknown as { scene: THREE.Group }
   const cloned = useMemo(
-    () => cloneSceneWithMaterials(scene, { forceDoubleSide: true }),
+    () =>
+      cloneSceneWithMaterials(scene, {
+        forceDoubleSide: true,
+        // assembled parts と完全に同じ色で描画して入れ替え時の差を消す
+        bodyTint: BODY_COLOR,
+        partsTint: PARTS_COLOR,
+      }),
     [scene],
   )
 
