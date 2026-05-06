@@ -109,12 +109,33 @@ function applyMaterialState(mesh: THREE.Mesh, opacity: number) {
   else apply(mesh.material)
 }
 
-function cloneSceneWithMaterials(scene: THREE.Group): THREE.Group {
+/**
+ * シーンをクローン + マテリアルもクローンする。
+ * options.forceDoubleSide: 回転時に裏面が真っ黒にならないよう強制 DoubleSide
+ * options.tintNonTextured: テクスチャを持たないマテリアルを指定色で塗り替える
+ *   (assembled parts と textured body の灰色を揃える等)
+ */
+function cloneSceneWithMaterials(
+  scene: THREE.Group,
+  options?: { forceDoubleSide?: boolean; tintNonTextured?: number },
+): THREE.Group {
   const c = scene.clone(true)
   c.traverse((o) => {
     const mesh = o as THREE.Mesh
     if (!mesh.isMesh) return
-    const cloneMat = (m: THREE.Material) => m.clone()
+    const cloneMat = (m: THREE.Material) => {
+      const nm = m.clone()
+      if (options?.forceDoubleSide) nm.side = THREE.DoubleSide
+      if (
+        options?.tintNonTextured !== undefined &&
+        !(nm as THREE.MeshStandardMaterial).map
+      ) {
+        ;(nm as THREE.MeshStandardMaterial).color = new THREE.Color(
+          options.tintNonTextured,
+        )
+      }
+      return nm
+    }
     mesh.material = Array.isArray(mesh.material)
       ? mesh.material.map(cloneMat)
       : cloneMat(mesh.material)
@@ -134,7 +155,11 @@ function ScrollPart({
 }) {
   const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(config.url) as unknown as { scene: THREE.Group }
-  const cloned = useMemo(() => cloneSceneWithMaterials(scene), [scene])
+  // assembled parts は textured body と同じ灰色に揃えてフェード時の色ブレを防ぐ
+  const cloned = useMemo(
+    () => cloneSceneWithMaterials(scene, { tintNonTextured: 0xb8b8b8 }),
+    [scene],
+  )
 
   useFrame(() => {
     if (!ref.current) return
@@ -187,7 +212,16 @@ function ScrollPart({
 function TexturedFinish({ progress }: { progress: MotionValue<number> }) {
   const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(TEXTURED_URL) as unknown as { scene: THREE.Group }
-  const cloned = useMemo(() => cloneSceneWithMaterials(scene), [scene])
+  // 回転時の背面真っ黒を回避するため DoubleSide 強制。
+  // 眉などの非テクスチャパーツは白で揃える (現在 Material 1 が灰色 0.8 のため)
+  const cloned = useMemo(
+    () =>
+      cloneSceneWithMaterials(scene, {
+        forceDoubleSide: true,
+        tintNonTextured: 0xffffff,
+      }),
+    [scene],
+  )
 
   useFrame(() => {
     if (!ref.current) return
