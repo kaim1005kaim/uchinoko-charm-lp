@@ -9,7 +9,8 @@ import * as THREE from 'three'
 /**
  * パーツごとの「初期 (バラバラ) 位置」と「最終 (ドッキング) 位置」、回転、フェードを定義。
  *
- * 進捗 0→0.72 で各パーツが終端へ向かい、0.72→1 では全体を Y 軸 360° 回転させる。
+ * 進捗 0→0.58 で各パーツが終端へ集合し、0.58→0.78 で 1 回転。
+ * 0.78→1.0 は静止保持 (完成形を見せる余白) — useFrame で何もしない。
  *
  * GLB の生メッシュは ±20 単位前後と巨大なので、各パーツ group に PART_SCALE を
  * 掛けてカメラ (z=7, fov=32°) に収まるよう縮小する。start/end は描画ワールド座標。
@@ -17,7 +18,9 @@ import * as THREE from 'three'
 const PART_SCALE = 0.08
 
 /** 全体を組み上げ終わるスクロール進捗 (この値以降は回転フェーズ) */
-const ASSEMBLY_END = 0.72
+const ASSEMBLY_END = 0.58
+/** 1 回転を終えるスクロール進捗 (この値以降は静止保持) */
+const SPIN_END = 0.78
 
 type PartConfig = {
   url: string
@@ -39,7 +42,7 @@ const PARTS: PartConfig[] = [
     key: 'face_base',
     start: { x: 0, y: 0, z: -3 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.0, 0.16],
+    window: [0.0, 0.13],
   },
   // STEP 02 左耳
   {
@@ -48,7 +51,7 @@ const PARTS: PartConfig[] = [
     start: { x: -4.5, y: 2.2, z: 1 },
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: -0.7 },
-    window: [0.16, 0.32],
+    window: [0.13, 0.27],
   },
   // STEP 02 右耳 (左耳を mirrorX で再利用 — shuna_right_ear.glb は nose の重複ファイル)
   {
@@ -58,7 +61,7 @@ const PARTS: PartConfig[] = [
     end: { x: 0, y: 0, z: 0 },
     startRotation: { x: 0, y: 0, z: 0.7 },
     mirrorX: true,
-    window: [0.2, 0.36],
+    window: [0.17, 0.3],
   },
   // STEP 03 鼻
   {
@@ -66,7 +69,7 @@ const PARTS: PartConfig[] = [
     key: 'nose',
     start: { x: 0, y: 0, z: 5 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.36, 0.55],
+    window: [0.3, 0.45],
   },
   // STEP 04 口
   {
@@ -74,7 +77,7 @@ const PARTS: PartConfig[] = [
     key: 'mouth',
     start: { x: 0, y: -3.5, z: 1 },
     end: { x: 0, y: 0, z: 0 },
-    window: [0.55, 0.72],
+    window: [0.45, 0.58],
   },
 ]
 
@@ -160,12 +163,16 @@ export function AssemblyScene({ progress }: { progress: MotionValue<number> }) {
   useFrame(() => {
     if (!groupRef.current) return
     const p = progress.get()
-    if (p > ASSEMBLY_END) {
-      const spinT = Math.min(1, (p - ASSEMBLY_END) / (1 - ASSEMBLY_END))
+    if (p < ASSEMBLY_END) {
+      // アセンブル中: ゆるく左右に揺らす
+      groupRef.current.rotation.y = Math.sin(performance.now() / 1500) * 0.06
+    } else if (p < SPIN_END) {
+      // 1 回転フェーズ
+      const spinT = (p - ASSEMBLY_END) / (SPIN_END - ASSEMBLY_END)
       groupRef.current.rotation.y = spinT * Math.PI * 2
     } else {
-      // アイドル状態でゆるく揺らす
-      groupRef.current.rotation.y = Math.sin(performance.now() / 1500) * 0.06
+      // 静止保持: 完成形を見せる余白 (回転は最終位置 = 0 に固定)
+      groupRef.current.rotation.y = 0
     }
   })
 
