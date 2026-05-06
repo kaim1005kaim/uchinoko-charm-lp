@@ -106,16 +106,17 @@ function Caption({
 }) {
   const [w0, w1] = window
   const fadeIn = w1 - w0
-  const opacity = useTransform(
-    progress,
-    [w0 - 0.02, w0 + fadeIn * 0.15, w1 - fadeIn * 0.15, w1 + 0.02],
-    [0, 1, 1, 0],
-  )
-  const y = useTransform(
-    progress,
-    [w0 - 0.02, w0 + fadeIn * 0.15, w1 - fadeIn * 0.15, w1 + 0.02],
-    [16, 0, 0, -16],
-  )
+  // framer-motion / Element.animate は offsets が [0, 1] に正規化される必要が
+  // あるので、境界外を含む 4 点をすべて clamp しておく。
+  const clamp = (v: number) => Math.max(0, Math.min(1, v))
+  const stops = [
+    clamp(w0 - 0.02),
+    clamp(w0 + fadeIn * 0.15),
+    clamp(w1 - fadeIn * 0.15),
+    clamp(w1 + 0.02),
+  ]
+  const opacity = useTransform(progress, stops, [0, 1, 1, 0])
+  const y = useTransform(progress, stops, [16, 0, 0, -16])
 
   return (
     <motion.div
