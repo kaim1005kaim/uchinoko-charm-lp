@@ -87,11 +87,40 @@ const PARTS: PartConfig[] = [
   },
 ]
 
-/**
- * テクスチャ付きの完成モデル (眉と目あり)。
- * ASSEMBLY_END → TEXTURE_END でフェードインし、以降は完全表示のまま回転 / 静止する。
- */
 const TEXTURED_URL = '/glb/shuna_ALL_tx.glb'
+
+/**
+ * 透明 / 不透明をマテリアル単位で切り替える。
+ * - transparent の切替時は needsUpdate でシェーダ再構築 (every frame に呼ぶと重いので必要時のみ)
+ * - 不透明時: depthWrite=true で正しい z オーダー
+ * - 半透明時: depthWrite=false (透過オブジェクトの z-fight 回避)
+ */
+function applyMaterialState(mesh: THREE.Mesh, opacity: number) {
+  const targetTransparent = opacity < 0.999
+  const apply = (m: THREE.Material) => {
+    if (m.transparent !== targetTransparent) {
+      m.transparent = targetTransparent
+      m.depthWrite = !targetTransparent
+      m.needsUpdate = true
+    }
+    ;(m as THREE.MeshStandardMaterial).opacity = opacity
+  }
+  if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
+  else apply(mesh.material)
+}
+
+function cloneSceneWithMaterials(scene: THREE.Group): THREE.Group {
+  const c = scene.clone(true)
+  c.traverse((o) => {
+    const mesh = o as THREE.Mesh
+    if (!mesh.isMesh) return
+    const cloneMat = (m: THREE.Material) => m.clone()
+    mesh.material = Array.isArray(mesh.material)
+      ? mesh.material.map(cloneMat)
+      : cloneMat(mesh.material)
+  })
+  return c
+}
 
 /**
  * 1 つの GLB パーツをスクロール進捗に応じて補間描画する。
@@ -105,23 +134,7 @@ function ScrollPart({
 }) {
   const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(config.url) as unknown as { scene: THREE.Group }
-
-  const cloned = useMemo(() => {
-    const c = scene.clone(true)
-    c.traverse((o) => {
-      const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
-      const cloneMat = (m: THREE.Material) => {
-        const nm = m.clone()
-        nm.transparent = true
-        return nm
-      }
-      mesh.material = Array.isArray(mesh.material)
-        ? mesh.material.map(cloneMat)
-        : cloneMat(mesh.material)
-    })
-    return c
-  }, [scene])
+  const cloned = useMemo(() => cloneSceneWithMaterials(scene), [scene])
 
   useFrame(() => {
     if (!ref.current) return
@@ -147,14 +160,14 @@ function ScrollPart({
     const fadeOut = 1 - THREE.MathUtils.smoothstep(p, ASSEMBLY_END, TEXTURE_END)
     const opacity = fadeIn * fadeOut
 
+    // 完全に透明のときは render から外して、テクスチャ完成モデルとの z-fight を避ける
+    const visible = opacity > 0.005
+    if (ref.current.visible !== visible) ref.current.visible = visible
+    if (!visible) return
+
     cloned.traverse((o) => {
       const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
-      const apply = (m: THREE.Material) => {
-        ;(m as THREE.MeshStandardMaterial).opacity = opacity
-      }
-      if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
-      else apply(mesh.material)
+      if (mesh.isMesh) applyMaterialState(mesh, opacity)
     })
   })
 
@@ -168,45 +181,35 @@ function ScrollPart({
 }
 
 /**
- * テクスチャ付き完成モデル。ASSEMBLY_END → TEXTURE_END でフェードイン。
- * 表面に眉と目のテクスチャが乗る。
+ * テクスチャ付き完成モデル (眉・目あり)。ASSEMBLY_END → TEXTURE_END でフェードイン。
+ * フェード完了後は不透明描画に切り替えてテクスチャ本来の見た目を出す。
  */
 function TexturedFinish({ progress }: { progress: MotionValue<number> }) {
+  const ref = useRef<THREE.Group>(null!)
   const { scene } = useGLTF(TEXTURED_URL) as unknown as { scene: THREE.Group }
-
-  const cloned = useMemo(() => {
-    const c = scene.clone(true)
-    c.traverse((o) => {
-      const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
-      const cloneMat = (m: THREE.Material) => {
-        const nm = m.clone()
-        nm.transparent = true
-        return nm
-      }
-      mesh.material = Array.isArray(mesh.material)
-        ? mesh.material.map(cloneMat)
-        : cloneMat(mesh.material)
-    })
-    return c
-  }, [scene])
+  const cloned = useMemo(() => cloneSceneWithMaterials(scene), [scene])
 
   useFrame(() => {
+    if (!ref.current) return
     const p = progress.get()
+
+    // ASSEMBLY_END 未満では完全に非表示 (パーツ表示中)
+    if (p < ASSEMBLY_END) {
+      if (ref.current.visible) ref.current.visible = false
+      return
+    }
+
+    if (!ref.current.visible) ref.current.visible = true
+
     const fadeIn = THREE.MathUtils.smoothstep(p, ASSEMBLY_END, TEXTURE_END)
     cloned.traverse((o) => {
       const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
-      const apply = (m: THREE.Material) => {
-        ;(m as THREE.MeshStandardMaterial).opacity = fadeIn
-      }
-      if (Array.isArray(mesh.material)) mesh.material.forEach(apply)
-      else apply(mesh.material)
+      if (mesh.isMesh) applyMaterialState(mesh, fadeIn)
     })
   })
 
   return (
-    <group scale={PART_SCALE}>
+    <group ref={ref} scale={PART_SCALE} visible={false}>
       <primitive object={cloned} />
     </group>
   )
@@ -236,7 +239,7 @@ export function AssemblyScene({
       const spinT = (p - TEXTURE_END) / (SPIN_END - TEXTURE_END)
       groupRef.current.rotation.y = spinT * Math.PI * 2
     } else {
-      // 静止保持: 完成形を見せる余白
+      // 静止保持
       groupRef.current.rotation.y = 0
     }
   })
@@ -251,6 +254,5 @@ export function AssemblyScene({
   )
 }
 
-// preload で初回ロード遅延を減らす (URL を重複排除)
 const PRELOAD_URLS = Array.from(new Set([...PARTS.map((p) => p.url), TEXTURED_URL]))
 PRELOAD_URLS.forEach((u) => useGLTF.preload(u))
