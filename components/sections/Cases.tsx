@@ -20,17 +20,19 @@ const CASES = [
     image: '/images/LP_CASE3.jpg',
     /** 人物を切り落とし、ランドセル + チャーム部分のみ見せる */
     position: '100% center',
+    /** さらに右寄りに拡大して人物を画面外に押し出す */
+    zoom: 1.5,
   },
 ] as const
 
 export function Cases() {
   return (
-    <section className="bg-white py-20 md:py-28">
+    <section className="bg-white pt-6 pb-20 md:pt-10 md:pb-28">
       <div className="mx-auto max-w-3xl px-6">
         <p className="mb-3 text-center text-[10px] text-brand-blue/70 tracking-[0.4em]">
           &quot;Uchinoko&quot; Life
         </p>
-        <h2 className="mb-12 text-center font-bold text-xl text-brand-blue md:text-3xl">
+        <h2 className="mb-10 text-center font-bold text-xl text-brand-blue md:mb-12 md:text-3xl">
           うちのこチャームがいる毎日
         </h2>
 
@@ -41,18 +43,22 @@ export function Cases() {
               className="overflow-hidden rounded-[2rem] bg-brand-blue p-3 text-white shadow-lg md:rounded-[2.5rem] md:p-5"
             >
               <div className="grid grid-cols-[1.5fr_1fr] items-center gap-3 md:gap-6">
-                {/* 画像 — 角丸の写真 */}
-                <div
-                  className={`relative w-full overflow-hidden rounded-[1.2rem] md:rounded-[1.8rem] ${
-                    c.no === '03' ? 'aspect-square md:aspect-[5/3.4]' : 'aspect-[5/3.4]'
-                  }`}
-                >
+                {/* 画像 — 角丸の写真 (全カード同一アスペクトに統一) */}
+                <div className="relative aspect-[5/3.4] w-full overflow-hidden rounded-[1.2rem] md:rounded-[1.8rem]">
                   <Image
                     src={c.image}
                     alt={`CASE ${c.no}`}
                     fill
                     className="object-cover"
-                    style={{ objectPosition: c.position }}
+                    style={{
+                      objectPosition: c.position,
+                      ...('zoom' in c && c.zoom
+                        ? {
+                            transform: `scale(${c.zoom})`,
+                            transformOrigin: 'right center',
+                          }
+                        : undefined),
+                    }}
                     sizes="(min-width: 768px) 380px, 55vw"
                   />
                 </div>
