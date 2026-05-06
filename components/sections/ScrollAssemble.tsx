@@ -19,42 +19,53 @@ import { AssemblyScene } from '@/components/three/AssemblyScene'
  *
  * 0.0 → 0.58 でアセンブル / 0.58 → 0.78 で 1 回転 / 0.78 → 1.0 は静止保持
  */
+/**
+ * デスクトップでの絶対位置 (3D の各パーツの画面上の位置に合わせる)。
+ * 顔は中央に大きく配置されるので、キャプションは右側に縦並び:
+ *   ears (上) → eyes & brows (上中) → face base (中) → nose (中下) → mouth (下)
+ * NOSE のみ顔中央の鼻まで線を伸ばすため lineWidth を長く。
+ */
 const STEPS = [
-  {
-    eyebrow: 'STEP 01',
-    title: 'Face Base',
-    sub: '輪郭となるベースから始まる',
-    range: [0.0, 0.1],
-    /** デスクトップでの絶対位置 (3D の face_base = 中心の右側) */
-    style: { top: '50%', right: '12%' },
-  },
   {
     eyebrow: 'STEP 02',
     title: 'Ears',
     sub: 'ピンと立った耳が左右から',
     range: [0.1, 0.25],
-    style: { top: '22%', right: '14%' },
-  },
-  {
-    eyebrow: 'STEP 03',
-    title: 'Nose',
-    sub: '愛嬌のある鼻が手前から',
-    range: [0.22, 0.33],
-    style: { top: '62%', right: '13%' },
-  },
-  {
-    eyebrow: 'STEP 04',
-    title: 'Mouth',
-    sub: 'やさしい口元が下から',
-    range: [0.32, 0.42],
-    style: { top: '80%', right: '12%' },
+    style: { top: '20%', right: '8%' },
+    lineWidth: 100,
   },
   {
     eyebrow: 'STEP 05',
     title: 'Eyes & Brows',
     sub: '眉と目が宿って完成',
     range: [0.42, 0.78],
-    style: { top: '92%', right: '10%' },
+    style: { top: '38%', right: '8%' },
+    lineWidth: 100,
+  },
+  {
+    eyebrow: 'STEP 01',
+    title: 'Face Base',
+    sub: '輪郭となるベースから始まる',
+    range: [0.0, 0.1],
+    style: { top: '52%', right: '8%' },
+    lineWidth: 100,
+  },
+  {
+    eyebrow: 'STEP 03',
+    title: 'Nose',
+    sub: '愛嬌のある鼻が手前から',
+    range: [0.22, 0.33],
+    // 顔の中央 (鼻) まで線を引きたいので右端寄せ + 長い線
+    style: { top: '66%', right: '8%' },
+    lineWidth: 380,
+  },
+  {
+    eyebrow: 'STEP 04',
+    title: 'Mouth',
+    sub: 'やさしい口元が下から',
+    range: [0.32, 0.42],
+    style: { top: '80%', right: '8%' },
+    lineWidth: 100,
   },
 ] as const
 
@@ -143,6 +154,7 @@ function StepRow({
   range,
   style,
   variant,
+  lineWidth = 100,
 }: {
   progress: MotionValue<number>
   eyebrow: string
@@ -151,6 +163,7 @@ function StepRow({
   range: readonly [number, number]
   style: { top?: string; right?: string; bottom?: string; left?: string }
   variant: 'desktop' | 'mobile'
+  lineWidth?: number
 }) {
   const [r0, r1] = range
   const [p, setP] = useState(progress.get())
@@ -207,11 +220,11 @@ function StepRow({
       style={{ opacity, ...(style as CSSProperties) }}
       className="group pointer-events-auto absolute flex -translate-y-1/2 cursor-default items-center gap-3 text-brand-blue transition-transform duration-200 ease-out hover:scale-110"
     >
-      {/* パーツへ伸びる接続ライン */}
+      {/* パーツへ伸びる接続ライン (NOSE などは長くする) */}
       <span
         aria-hidden
-        style={{ transform: `scaleX(${lineScale})` }}
-        className="block h-px w-[100px] origin-right bg-brand-blue transition-transform duration-300 ease-out group-hover:bg-brand-blue-dark"
+        style={{ transform: `scaleX(${lineScale})`, width: `${lineWidth}px` }}
+        className="block h-px origin-right bg-brand-blue transition-transform duration-300 ease-out group-hover:bg-brand-blue-dark"
       />
       <span
         aria-hidden

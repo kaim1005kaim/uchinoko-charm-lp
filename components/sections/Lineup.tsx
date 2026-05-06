@@ -27,11 +27,13 @@ export function Lineup() {
         <p className="mb-3 text-center text-[10px] text-brand-blue/70 tracking-[0.4em]">
           Line up
         </p>
-        <h2 className="mb-2 text-center font-bold text-base leading-snug md:text-2xl">
-          「うちのこ」の組み合わせは無限大
+        <h2 className="mb-3 text-center font-bold text-lg leading-snug md:mb-2 md:text-2xl">
+          組み合わせ無限大！
         </h2>
         <p className="mb-10 text-center font-bold text-xl leading-snug md:mb-12 md:text-3xl">
-          世界でひとつの「うちのこ」がつくれる！
+          世界でひとつの
+          <br className="md:hidden" />
+          「うちのこ」をつくろう
         </p>
 
         {/* モバイル: 4 列 × 2 行 (8 マス)、デスクトップ: 5 列 × 2 行 (10 マス) */}
@@ -55,8 +57,10 @@ export function Lineup() {
           ))}
         </div>
 
-        <p className="mt-10 text-center font-bold text-xs leading-loose md:mt-12 md:text-base">
-          眉毛・目の大きさ、位置を調整して愛犬・愛猫にそっくりな「うちのこ」をつくろう！
+        <p className="mt-10 text-center font-bold text-sm leading-relaxed md:mt-12 md:text-base md:leading-loose">
+          アプリで眉毛と目を調整して、
+          <br className="md:hidden" />
+          お好みのパーツを選ぶだけ！
         </p>
       </div>
     </section>
