@@ -18,10 +18,10 @@ const CASES = [
     no: '03',
     body: ['学校やお出かけも', 'うちのこがいれば', 'きっと楽しい'],
     image: '/images/LP_CASE3.jpg',
-    /** 人物を切り落とし、ランドセル + チャーム部分のみ見せる */
-    position: '100% center',
-    /** さらに右寄りに拡大して人物を画面外に押し出す */
-    zoom: 1.5,
+    /** ランドセルにぶら下がるチャーム部分にズームアップ */
+    position: '70% center',
+    zoom: 2.5,
+    zoomOrigin: '70% 55%',
   },
 ] as const
 
@@ -55,7 +55,8 @@ export function Cases() {
                       ...('zoom' in c && c.zoom
                         ? {
                             transform: `scale(${c.zoom})`,
-                            transformOrigin: 'right center',
+                            transformOrigin:
+                              ('zoomOrigin' in c && c.zoomOrigin) || 'right center',
                           }
                         : undefined),
                     }}
