@@ -8,7 +8,7 @@ import {
   useMotionValueEvent,
   useScroll,
 } from 'framer-motion'
-import { type CSSProperties, Suspense, useRef, useState } from 'react'
+import { type CSSProperties, Suspense, useEffect, useRef, useState } from 'react'
 import { AssemblyScene } from '@/components/three/AssemblyScene'
 
 /**
@@ -72,6 +72,16 @@ export function ScrollAssemble() {
     offset: ['start start', 'end end'],
   })
 
+  // モバイルではカメラを引いて model 全体が画面に収まるようにする
+  const [cameraZ, setCameraZ] = useState(7)
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)')
+    const apply = () => setCameraZ(mql.matches ? 11 : 7)
+    apply()
+    mql.addEventListener('change', apply)
+    return () => mql.removeEventListener('change', apply)
+  }, [])
+
   return (
     <section ref={ref} className="relative h-[380vh] bg-white">
       <div className="sticky top-0 flex h-[100dvh] w-full items-center justify-center overflow-hidden">
@@ -81,7 +91,7 @@ export function ScrollAssemble() {
           gl={{ antialias: true, alpha: true }}
           className="absolute inset-0"
         >
-          <PerspectiveCamera makeDefault position={[0, 0, 7]} fov={32} />
+          <PerspectiveCamera makeDefault position={[0, 0, cameraZ]} fov={32} />
           <ambientLight intensity={0.55} />
           <directionalLight position={[4, 6, 5]} intensity={1.1} />
           <directionalLight position={[-4, -2, -3]} intensity={0.35} />

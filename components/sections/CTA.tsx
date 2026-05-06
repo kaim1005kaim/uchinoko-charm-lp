@@ -34,7 +34,7 @@ export function CTA() {
               type="button"
               disabled
               aria-disabled="true"
-              className="inline-flex min-h-[60px] cursor-not-allowed items-center justify-center rounded-full bg-brand-blue px-10 font-bold text-base text-white shadow-2xl opacity-90 md:text-lg"
+              className="inline-flex min-h-[56px] max-w-[90vw] cursor-not-allowed items-center justify-center whitespace-nowrap rounded-full bg-brand-blue px-6 font-bold text-[13px] text-white shadow-2xl opacity-90 md:min-h-[60px] md:px-10 md:text-lg"
             >
               うちのこチャームのご購入はこちらから
             </button>

@@ -19,7 +19,7 @@ const CASES = [
     body: ['学校やお出かけも', 'うちのこがいれば', 'きっと楽しい'],
     image: '/images/LP_CASE3.jpg',
     /** 人物を切り落とし、ランドセル + チャーム部分のみ見せる */
-    position: '78% center',
+    position: '100% center',
   },
 ] as const
 
@@ -30,7 +30,7 @@ export function Cases() {
         <p className="mb-3 text-center text-[10px] text-brand-blue/70 tracking-[0.4em]">
           &quot;Uchinoko&quot; Life
         </p>
-        <h2 className="mb-12 text-center font-bold text-2xl text-brand-blue md:text-3xl">
+        <h2 className="mb-12 text-center font-bold text-xl text-brand-blue md:text-3xl">
           うちのこチャームがいる毎日
         </h2>
 
@@ -40,25 +40,29 @@ export function Cases() {
               key={c.no}
               className="overflow-hidden rounded-[2rem] bg-brand-blue p-3 text-white shadow-lg md:rounded-[2.5rem] md:p-5"
             >
-              <div className="grid grid-cols-[1.6fr_1fr] items-center gap-3 md:gap-6">
+              <div className="grid grid-cols-[1.5fr_1fr] items-center gap-3 md:gap-6">
                 {/* 画像 — 角丸の写真 */}
-                <div className="relative aspect-[5/3.4] w-full overflow-hidden rounded-[1.4rem] md:rounded-[1.8rem]">
+                <div
+                  className={`relative w-full overflow-hidden rounded-[1.2rem] md:rounded-[1.8rem] ${
+                    c.no === '03' ? 'aspect-square md:aspect-[5/3.4]' : 'aspect-[5/3.4]'
+                  }`}
+                >
                   <Image
                     src={c.image}
                     alt={`CASE ${c.no}`}
                     fill
                     className="object-cover"
                     style={{ objectPosition: c.position }}
-                    sizes="(min-width: 768px) 380px, 60vw"
+                    sizes="(min-width: 768px) 380px, 55vw"
                   />
                 </div>
 
                 {/* テキスト */}
-                <div className="flex flex-col gap-3 pr-2 md:pr-6">
-                  <p className="font-bold text-brand-yellow text-xl tracking-wider md:text-2xl">
+                <div className="flex flex-col gap-2 pr-2 md:gap-3 md:pr-6">
+                  <p className="font-bold text-base text-brand-yellow tracking-wider md:text-2xl">
                     CASE {c.no}
                   </p>
-                  <p className="text-sm leading-relaxed md:text-base">
+                  <p className="text-[11px] leading-relaxed md:text-base">
                     {c.body.map((line, i) => (
                       // biome-ignore lint/suspicious/noArrayIndexKey: static line break
                       <span key={i} className="block">

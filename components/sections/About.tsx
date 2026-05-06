@@ -11,14 +11,14 @@ export function About() {
       <div className="relative mx-auto max-w-2xl px-6 text-center text-brand-blue">
         <p className="mb-12 text-[10px] tracking-[0.4em] text-brand-blue/70">about</p>
 
-        {/* 装飾アイコン (左上の猫チャーム) */}
+        {/* 装飾アイコン (左上の猫チャーム) — モバイルでは非表示 */}
         <Image
           src="/images/LP_A.png"
           alt=""
           aria-hidden
           width={240}
           height={240}
-          className="-top-12 md:-top-16 -left-2 md:-left-16 absolute h-24 w-24 md:h-36 md:w-36"
+          className="-top-16 -left-16 absolute hidden h-36 w-36 md:block"
         />
 
         <p className="mb-12 font-bold text-lg leading-relaxed md:text-2xl">
@@ -53,14 +53,14 @@ export function About() {
           <p className="font-bold">世界でひとつの愛おしさを、持ち歩こう。</p>
         </div>
 
-        {/* 装飾アイコン (右下の犬チャーム) */}
+        {/* 装飾アイコン (右下の犬チャーム) — モバイルでは非表示 */}
         <Image
           src="/images/LP_B.png"
           alt=""
           aria-hidden
           width={260}
           height={260}
-          className="-bottom-16 md:-bottom-20 -right-2 md:-right-16 absolute h-28 w-28 md:h-40 md:w-40"
+          className="-bottom-20 -right-16 absolute hidden h-40 w-40 md:block"
         />
       </div>
     </section>
